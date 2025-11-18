@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "ultimatecollisionengine",
+  "version": "${version}",
+  "name": "UltimateCollisionEngine",
+  "description": "Provides New Collision Systems",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/ultimatecollisionengine/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "org.spifftech.ultimatecollisionengine.client.UltimatecollisionengineDataGenerator"
+    ],
+    "client": [
+      "org.spifftech.ultimatecollisionengine.client.UltimatecollisionengineClient"
+    ],
+    "main": [
+      "org.spifftech.ultimatecollisionengine.Ultimatecollisionengine"
+    ]
+  },
+  "mixins": [
+    "ultimatecollisionengine.mixins.json",
+    {
+      "config": "ultimatecollisionengine.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
