@@ -32,37 +32,37 @@ public class CustomCollisionEntityRenderer extends EntityRenderer<CustomCollisio
         // 2. Scale it down a bit
         matrices.scale(1f, 1f, 1f);
 
-        // **IMPORTANT:** Translate to center the block.
-        // Entities are usually rendered at the origin (0,0,0) of the matrix stack,
-        // but blocks are often rendered from their corner.
-        matrices.translate(-0.5, -0.5, -0.5);
-        matrices.translate(0, 0.5, 0);
+        // Calculate an independent, time-based rotation angle
+        // (entity.age is in ticks, add tickDelta for smooth interpolation between ticks)
+        // Here, 5.0f controls the speed (5 degrees per tick)
+        float spinAngle = (entity.age + tickDelta) * 5.0f;
 
+        // **IMPORTANT:** Translate to center the block.
+        // Entities render from the middle, blocks from a corner. We move the origin to the block's corner.
+        //matrices.translate(0.5, 0.5, 0.5);
+        matricesatrices.translate(0.0, 0.5, 0.0);
+
+        // --- 🔄 APPLY INDEPENDENT ROTATION ---
+        // Apply the time-based rotation around the Y-axis (up/down).
+        matrices.multiply(net.minecraft.util.math.RotationAxis.POSITIVE_Y.rotationDegrees(spinAngle));
+        matrices.translate(-0.5, -0.5, -0.5);
+        // --- 🔄 END ROTATION ---
 
         // --- 🧱 Start Block Rendering Logic ---
 
         net.minecraft.block.BlockState blockStateToRender = Blocks.STONE.getDefaultState();
 
-        // Get the specific VertexConsumer for the block's texture layer
         net.minecraft.client.render.VertexConsumer blockConsumer =
                 vertexConsumers.getBuffer(RenderLayers.getMovingBlockLayer(blockStateToRender));
 
-        // Call the REQUIRED method signature:
         this.blockRenderManager.renderBlock(
-                // 1. net.minecraft.block.BlockState state
                 blockStateToRender,
-                // 2. net.minecraft.util.math.BlockPos pos
-                entity.getBlockPos(), // Use the entity's current block position
-                // 3. net.minecraft.world.BlockRenderView world
-                entity.getWorld(), // Use the entity's world, which implements BlockRenderView
-                // 4. net.minecraft.client.util.math.MatrixStack matrices
+                entity.getBlockPos(),
+                entity.getWorld(),
                 matrices,
-                // 5. net.minecraft.client.render.VertexConsumer vertexConsumer
-                blockConsumer, // The consumer we retrieved above
-                // 6. boolean cull
-                false, // We generally don't want to cull faces when rendering a block on an entity
-                // 7. net.minecraft.util.math.random.Random random
-                entity.getRandom() // Use the entity's random instance for consistency
+                blockConsumer,
+                false,
+                entity.getRandom()
         );
 
         // --- 🧱 End Block Rendering Logic ---
