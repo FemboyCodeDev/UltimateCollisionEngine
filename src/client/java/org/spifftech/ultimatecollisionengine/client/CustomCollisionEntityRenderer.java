@@ -40,7 +40,7 @@ public class CustomCollisionEntityRenderer extends EntityRenderer<CustomCollisio
         // **IMPORTANT:** Translate to center the block.
         // Entities render from the middle, blocks from a corner. We move the origin to the block's corner.
         //matrices.translate(0.5, 0.5, 0.5);
-        matricesatrices.translate(0.0, 0.5, 0.0);
+        matrices.translate(0.0, 0.5, 0.0);
 
         // --- 🔄 APPLY INDEPENDENT ROTATION ---
         // Apply the time-based rotation around the Y-axis (up/down).
