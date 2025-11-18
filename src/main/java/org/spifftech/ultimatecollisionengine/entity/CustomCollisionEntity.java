@@ -49,9 +49,9 @@ public class CustomCollisionEntity extends MobEntity {
 
         // Half extents calculated from the Box
         Vec3d halfExtents = new Vec3d(
-                (box.maxX - box.minX) / 2.0,
-                (box.maxY - box.minY) / 2.0,
-                (box.maxZ - box.minZ) / 2.0
+                (box.maxX - box.minX) / (2.0*2.0),
+                (box.maxY - box.minY) / (2.0*2.0),
+                (box.maxZ - box.minZ) / (2.0*2.0)
         );
 
         // Non-rotated axes (identity matrix)
@@ -126,14 +126,14 @@ public class CustomCollisionEntity extends MobEntity {
                 double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
 
                 // Set the velocity or movement directly on the other entity
-                //other.addVelocity(pushX * pushFactor, 0.0, 0.0);
+                other.addVelocity(pushX * pushFactor, 0.0, 0.0);
 
             } else {
                 // Collision is shallower in Z, so push along Z
                 double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
 
                 // Set the velocity or movement directly on the other entity
-                //other.addVelocity(0.0, 0.0, pushZ * pushFactor);
+                other.addVelocity(0.0, 0.0, pushZ * pushFactor);
             }
 
             // To prevent the player/mob from constantly trying to walk into the object:
