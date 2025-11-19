@@ -89,6 +89,8 @@ public class CustomCollisionEntity extends MobEntity {
         // Step 1: Calculate the world-space center
         Vec3d center = this.getPos();
 
+        center = center.add(new Vec3d(0,2,0));
+
         // Step 2: Get the entity's current rotation (Yaw is the rotation around the Y-axis)
         // We use the entity's current yaw, which is updated in the tick() method below.
         float yawDegrees = this.getYaw();
@@ -181,7 +183,7 @@ public class CustomCollisionEntity extends MobEntity {
 
             // ⭐ NEW: Calculate and set a continuous rotation based on age (ticks)
             // This is what makes the entity spin!
-            float spinSpeed = 5.0f; // Spin 5 degrees per tick
+            float spinSpeed = 1.0f; // Spin 5 degrees per tick
             float newYaw = (this.age * spinSpeed) % 360.0f; // Get angle and wrap around 360
             this.setYaw(newYaw);
 
@@ -201,6 +203,7 @@ public class CustomCollisionEntity extends MobEntity {
                             CustomCollisionBox.halfExtents.getZ()));
 
             Box searchBox = this.getBoundingBox().expand(maxHalfExtent + 0.1);
+            searchBox = searchBox.offset(new Vec3d(0,1,0));
 
             // Get a list of potential entities in the search area
             List<Entity> nearbyEntities = this.getWorld().getOtherEntities(
@@ -247,27 +250,34 @@ public class CustomCollisionEntity extends MobEntity {
                     double overlapZ = (thisObb.halfExtents.getZ() + (otherAabb.getZLength() / 2.0)) - Math.abs(centerVector.getZ());
 
                     double pushFactor = 0.5; // Controls the strength of the push
-                    pushFactor = (double) 1.0 / (double) getWorld().getGameRules().getInt(CollisionPushDistance);
+                    //pushFactor = (double) 1.0 / (double) getWorld().getGameRules().getInt(CollisionPushDistance);
 
 
-                    double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
-                    double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
-                    other.addVelocity(pushX * pushFactor, 10.0, pushZ * pushFactor);
+                    //double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
+                    //double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
+                    //other.addVelocity(pushX * pushFactor, 10.0, pushZ * pushFactor);
                     System.out.println(other.getPos().add(centerVector));
-                    setEntityPosition(other,other.getPos().add(centerVector.multiply(pushFactor)));
+                    setEntityPosition(other,other.getPos().add(centerVector.multiply(0.1)));
 
                     // Determine MTV axis and apply repulsion
                     if (overlapX < overlapZ) {
                         // Push along X axis (axis with the least overlap)
                         // Add a small epsilon (0.001) to ensure separation
-                        //double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
+                        double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
+                        System.out.println("pushX");
+                        System.out.println(pushX);
+
                         other.addVelocity(pushX * pushFactor, 0.0, 0.0);
 
                     } else {
                         // Push along Z axis
-                       // double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
+                        double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
+                        System.out.println("pushZ");
+                        System.out.println(pushZ);
                         other.addVelocity(0.0, 0.0, pushZ * pushFactor);
                     }
+
+                    other.velocityModified = true;
 
                     //other.velocityDirty = true;
                 }

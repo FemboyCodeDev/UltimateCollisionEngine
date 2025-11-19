@@ -37,7 +37,7 @@ public class CustomCollisionEntityRenderer extends EntityRenderer<CustomCollisio
         // Calculate an independent, time-based rotation angle
         // (entity.age is in ticks, add tickDelta for smooth interpolation between ticks)
         // Here, 5.0f controls the speed (5 degrees per tick)
-        float spinAngle = (entity.age + tickDelta) * 5.0f;
+        float spinAngle = (entity.age) * 1.0f;
 
         // **IMPORTANT:** Translate to center the block.
         // Entities render from the middle, blocks from a corner. We move the origin to the block's corner.
