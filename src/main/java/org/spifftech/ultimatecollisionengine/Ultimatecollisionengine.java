@@ -24,7 +24,8 @@ public class Ultimatecollisionengine implements ModInitializer {
             Registries.ENTITY_TYPE,
             new Identifier(MOD_ID, "custom_collision_entity"),
             FabricEntityTypeBuilder.create(SpawnGroup.CREATURE, CustomCollisionEntity::new)
-                    .dimensions(EntityDimensions.fixed(1f, 1f)) // Define width and height
+                    .dimensions(EntityDimensions.fixed(0.1f, 0.1f)) // Define width and height
+
                     .build()
     );
 
