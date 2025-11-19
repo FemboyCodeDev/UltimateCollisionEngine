@@ -21,6 +21,11 @@ public class CustomCollisionEntity extends MobEntity {
         super(entityType, world);
     }
 
+    private static final net.minecraft.entity.EntityDimensions CUSTOM_DIMENSIONS =
+            net.minecraft.entity.EntityDimensions.changing(2.0F, 2.0F); // Width, Height
+
+
+
     // 2. Define the basic attributes (Health, Movement Speed)
     public static DefaultAttributeContainer.Builder createCustomCollisionEntityAttributes() {
         return MobEntity.createMobAttributes()
@@ -80,10 +85,13 @@ public class CustomCollisionEntity extends MobEntity {
         // CRITICAL: Do nothing here. All collision is handled in tick().
     }
 
+
     // 🌟 Implement the custom collision logic in the tick loop.
     @Override
     public void tick() {
+        System.out.println("Ticking Custom Collision Entity");
         super.tick();
+        System.out.println("Ticking Custom Collision Entity 1");
 
         if (!this.getWorld().isClient) {
             // Step 1: Define a search area around the entity
@@ -106,6 +114,8 @@ public class CustomCollisionEntity extends MobEntity {
 
                 if (SatCollisionHelper.obbAabbIntersects(thisObb, otherAabb)) {
 
+                    System.out.println("Intersecting Custom Collision Entity");
+
                     // Collision found! Apply push logic to the 'other' entity.
                     Vec3d centerVector = other.getPos().subtract(this.getPos());
 
@@ -114,6 +124,7 @@ public class CustomCollisionEntity extends MobEntity {
                     double overlapZ = (thisObb.halfExtents.getZ() + (otherAabb.getZLength() / 2.0)) - Math.abs(centerVector.getZ());
 
                     double pushFactor = 0.5; // Controls the strength of the push
+                    pushFactor = 0.0;
 
                     // Determine MTV axis and apply repulsion
                     if (overlapX < overlapZ) {
