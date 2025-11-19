@@ -3,8 +3,6 @@ package org.spifftech.ultimatecollisionengine.entity;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
-import net.minecraft.entity.ai.goal.LookAroundGoal;
-import net.minecraft.entity.ai.goal.WanderAroundFarGoal;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -13,6 +11,8 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 import org.spifftech.ultimatecollisionengine.boxcollision.SatCollisionHelper;
+
+import java.util.List;
 
 
 public class CustomCollisionEntity extends MobEntity {
@@ -25,36 +25,33 @@ public class CustomCollisionEntity extends MobEntity {
     public static DefaultAttributeContainer.Builder createCustomCollisionEntityAttributes() {
         return MobEntity.createMobAttributes()
                 .add(EntityAttributes.GENERIC_MAX_HEALTH, 1)
-                .add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.25);
+                .add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.0); // Entity should not move
+    }
+
+    @Override
+    protected void initGoals() {
+        // CRITICAL: Leave empty! No goals means no vanilla movement/push attempts.
     }
 
     @Override
     protected void initDataTracker() {
-
         super.initDataTracker();
-        // Add any of your *own* custom tracked data here if you have any.
-        // e.g., this.dataTracker.startTracking(MY_CUSTOM_FIELD, defaultValue);
-
-    }
-    // 3. Define simple AI goals (wandering and looking around)
-    @Override
-    protected void initGoals() {
-        //this.goalSelector.add(1, new WanderAroundFarGoal(this, (double)1.0));
-        //this.goalSelector.add(2, new LookAroundGoal(this));
     }
 
+    // Helper to create the OBB from the entity's AABB.
     private SatCollisionHelper.OBB createObbFromEntityBox() {
         Box box = this.getBoundingBox();
         Vec3d center = box.getCenter();
 
         // Half extents calculated from the Box
+        // Using getXLength/2.0 is cleaner, but this ensures the calculation is clear.
         Vec3d halfExtents = new Vec3d(
                 (box.maxX - box.minX) / (2.0*2.0),
                 (box.maxY - box.minY) / (2.0*2.0),
                 (box.maxZ - box.minZ) / (2.0*2.0)
         );
 
-        // Non-rotated axes (identity matrix)
+        // Non-rotated axes (identity matrix) - **Only valid if entity never rotates!**
         Vec3d[] axes = new Vec3d[] {
                 new Vec3d(1.0, 0.0, 0.0), // U1 (Local X)
                 new Vec3d(0.0, 1.0, 0.0), // U2 (Local Y)
@@ -66,85 +63,72 @@ public class CustomCollisionEntity extends MobEntity {
 
 
     // 🌟 Override the method that determines if THIS entity can be pushed.
-    // Returning false makes it impossible for other entities (like players)
-    // to apply forces that would make it move.
     @Override
     public boolean isPushable() {
-        return true;
-        //return false;
+        return false; // Prevents THIS entity from being moved by others.
     }
+
+    // 🌟 This is the KEY change: prevents vanilla collision resolution.
     @Override
     public boolean isCollidable() {
-        //return false;
-        return true; // Ensures the game sees a solid boundary
+        return false; // Ignores the default AABB check for *collision*.
     }
 
-    // 🌟 Override the pushAwayFrom method.
-    // This is called when another entity (other) bumps into THIS entity.
+    // 🌟 Empty pushAwayFrom: ensures no vanilla push logic is executed.
     @Override
     public void pushAwayFrom(Entity other) {
+        // CRITICAL: Do nothing here. All collision is handled in tick().
+    }
 
+    // 🌟 Implement the custom collision logic in the tick loop.
+    @Override
+    public void tick() {
+        super.tick();
 
-        System.out.println("Collision 1");
         if (!this.getWorld().isClient) {
-        // Output debug
+            // Step 1: Define a search area around the entity
+            // Expand the box slightly to catch entities just bumping the edge.
+            Box searchBox = this.getBoundingBox().expand(0.1);
 
+            // Get a list of potential entities in the search area
+            List<Entity> nearbyEntities = this.getWorld().getOtherEntities(
+                    this,
+                    searchBox,
+                    (entity) -> entity.isAlive()
+                            && !(entity instanceof CustomCollisionEntity) // Don't check against self-type
+            );
 
-        // --- 1. Define the OBB and AABB ---
-        SatCollisionHelper.OBB thisObb = this.createObbFromEntityBox(); // The rigid object
-        Box otherAabb = other.getBoundingBox();       // The colliding object
+            SatCollisionHelper.OBB thisObb = this.createObbFromEntityBox();
 
-        // --- 2. Check for intersection and find the MTV (Separating Axis Theorem) ---
+            // Step 2 & 3: Check intersection and resolve collision for each
+            for (Entity other : nearbyEntities) {
+                Box otherAabb = other.getBoundingBox();
 
-        // This is the ideal place to call an advanced SAT function from SatCollisionHelper
-        // that returns the Minimum Translation Vector (MTV) instead of just a boolean.
-        // For demonstration, we'll assume a helper function exists:
+                if (SatCollisionHelper.obbAabbIntersects(thisObb, otherAabb)) {
 
-        // Vec3d mtv = SatCollisionHelper.findObbAabbMtv(thisObb, otherAabb);
+                    // Collision found! Apply push logic to the 'other' entity.
+                    Vec3d centerVector = other.getPos().subtract(this.getPos());
 
-        // Since that function doesn't exist in the provided SAT code,
-        // we'll revert to a simpler method to find the push direction/depth
-        // based on the center overlap, but only if an intersection actually occurs.
+                    // Calculate penetration depth (Overlap) for X and Z axes
+                    double overlapX = (thisObb.halfExtents.getX() + (otherAabb.getXLength() / 2.0)) - Math.abs(centerVector.getX());
+                    double overlapZ = (thisObb.halfExtents.getZ() + (otherAabb.getZLength() / 2.0)) - Math.abs(centerVector.getZ());
 
-        if (SatCollisionHelper.obbAabbIntersects(thisObb, otherAabb)) {
-            System.out.println("Collision 2");
-            // --- 3. Simple Repulsion based on center overlap ---
+                    double pushFactor = 0.5; // Controls the strength of the push
 
-            // The vector from the center of THIS (the OBB) to the center of OTHER (the AABB)
-            Vec3d centerVector = other.getPos().subtract(this.getPos());
+                    // Determine MTV axis and apply repulsion
+                    if (overlapX < overlapZ) {
+                        // Push along X axis (axis with the least overlap)
+                        double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
+                        other.addVelocity(pushX * pushFactor, 0.0, 0.0);
+                    } else {
+                        // Push along Z axis
+                        double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
+                        other.addVelocity(0.0, 0.0, pushZ * pushFactor);
+                    }
 
-            // Find the penetration depth on the X and Z axes (Y is often handled by jump/fall)
-            double overlapX = (thisObb.halfExtents.getX() + (otherAabb.getXLength() / 2.0)) - Math.abs(centerVector.getX());
-            double overlapZ = (thisObb.halfExtents.getZ() + (otherAabb.getZLength() / 2.0)) - Math.abs(centerVector.getZ());
-
-            double pushFactor = 0.5; // Controls the strength of the push
-            //pushFactor = 0.0;
-
-            // Determine which axis has the LEAST overlap (this is the MTV direction)
-            if (overlapX < overlapZ) {
-                // Collision is shallower in X, so push along X
-                double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
-
-                // Set the velocity or movement directly on the other entity
-                other.addVelocity(pushX * pushFactor, 0.0, 0.0);
-
-            } else {
-                // Collision is shallower in Z, so push along Z
-                double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
-
-                // Set the velocity or movement directly on the other entity
-                other.addVelocity(0.0, 0.0, pushZ * pushFactor);
+                    other.velocityDirty = true;
+                }
             }
-
-            // To prevent the player/mob from constantly trying to walk into the object:
-            other.velocityDirty = true;
         }
-
-        // IMPORTANT: Do NOT call super.pushAwayFrom(other) to avoid default Minecraft physics.
-        // Also avoid other.pushAwayFrom(this).
-    }}
-
-
-
-
+    }
 }
