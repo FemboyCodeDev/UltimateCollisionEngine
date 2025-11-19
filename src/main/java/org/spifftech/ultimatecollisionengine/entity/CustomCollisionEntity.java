@@ -7,6 +7,7 @@ import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
@@ -83,18 +84,45 @@ public class CustomCollisionEntity extends MobEntity {
      * The OBB is translated to the entity's current world position.
      */
     private SatCollisionHelper.OBB getCurrentObb() {
-        // The OBB center is the entity's current position (getPos())
+        // Step 1: Calculate the world-space center
         Vec3d center = this.getPos();
 
-        // Create a *new* OBB translated to the current world position
+        // Step 2: Get the entity's current rotation (Yaw is the rotation around the Y-axis)
+        // We use the entity's current yaw, which is updated in the tick() method below.
+        float yawDegrees = this.getYaw();
+
+        // Convert the yaw from degrees to a quaternion for rotation
+        // RotationAxis.POSITIVE_Y defines the rotation axis for yaw.
+        org.joml.Quaternionf rotation = RotationAxis.POSITIVE_Y.rotationDegrees(yawDegrees);
+
+        // Step 3: Rotate the OBB's *local* axes into *world* axes
+        Vec3d[] worldAxes = new Vec3d[3];
+
+        // Rotate Local X-axis (U1)
+        worldAxes[0] = rotateVector(CustomCollisionBox.axes[0], rotation);
+        // Rotate Local Y-axis (U2)
+        worldAxes[1] = rotateVector(CustomCollisionBox.axes[1], rotation);
+        // Rotate Local Z-axis (U3)
+        worldAxes[2] = rotateVector(CustomCollisionBox.axes[2], rotation);
+
+        // Step 4: Create the final world-space OBB
         return new SatCollisionHelper.OBB(
                 center,
-                CustomCollisionBox.axes,
+                worldAxes, // **Using the newly rotated axes!**
                 CustomCollisionBox.halfExtents
         );
     }
 
+    private Vec3d rotateVector(Vec3d vector, org.joml.Quaternionf rotation) {
+        // Convert Minecraft Vec3d to JOML Vector3f
+        org.joml.Vector3f vec = new org.joml.Vector3f((float) vector.getX(), (float) vector.getY(), (float) vector.getZ());
 
+        // Apply rotation
+        vec.rotate(rotation);
+
+        // Convert back to Minecraft Vec3d
+        return new Vec3d(vec.x(), vec.y(), vec.z());
+    }
     // 🌟 Override the method that determines if THIS entity can be pushed.
     @Override
     public boolean isPushable() {
@@ -123,6 +151,21 @@ public class CustomCollisionEntity extends MobEntity {
         super.tick();
 
         if (!this.getWorld().isClient) {
+
+            // ⭐ NEW: Calculate and set a continuous rotation based on age (ticks)
+            // This is what makes the entity spin!
+            float spinSpeed = 5.0f; // Spin 5 degrees per tick
+            float newYaw = (this.age * spinSpeed) % 360.0f; // Get angle and wrap around 360
+            this.setYaw(newYaw);
+
+            // Since we only rotate around Y, pitch and roll remain 0
+            this.setPitch(0.0f);
+
+            // Ensure the vanilla rotation fields are updated for the next tick
+            this.prevYaw = this.getYaw();
+            this.prevPitch = this.getPitch();
+
+
             // Step 1: Define a search area around the entity
             // Base the search box on the custom OBB's size for efficiency.
             // OBB max dimension = Math.max(x,y,z) * 2. Add a small buffer (0.1).
@@ -165,15 +208,22 @@ public class CustomCollisionEntity extends MobEntity {
 
                     double pushFactor = 5.0; // Controls the strength of the push
 
+
+                    double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
+                    double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
+                    other.addVelocity(pushX * pushFactor, 10.0, pushZ * pushFactor);
+                    System.out.println(other.getPos().add(centerVector));
+                    other.setPosition(other.getPos().add(centerVector));
+
                     // Determine MTV axis and apply repulsion
                     if (overlapX < overlapZ) {
                         // Push along X axis (axis with the least overlap)
                         // Add a small epsilon (0.001) to ensure separation
-                        double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
+                        //double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
                         other.addVelocity(pushX * pushFactor, 0.0, 0.0);
                     } else {
                         // Push along Z axis
-                        double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
+                       // double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
                         other.addVelocity(0.0, 0.0, pushZ * pushFactor);
                     }
 
