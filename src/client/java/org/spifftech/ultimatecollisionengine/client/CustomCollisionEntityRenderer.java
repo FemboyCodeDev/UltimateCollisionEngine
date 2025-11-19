@@ -32,6 +32,8 @@ public class CustomCollisionEntityRenderer extends EntityRenderer<CustomCollisio
         // 2. Scale it down a bit
         matrices.scale(1f, 1f, 1f);
 
+        matrices.scale(2f, 2f, 2f);
+
         // Calculate an independent, time-based rotation angle
         // (entity.age is in ticks, add tickDelta for smooth interpolation between ticks)
         // Here, 5.0f controls the speed (5 degrees per tick)

@@ -1,6 +1,8 @@
 package org.spifftech.ultimatecollisionengine;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleFactory;
+import net.fabricmc.fabric.api.gamerule.v1.GameRuleRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.minecraft.entity.EntityDimensions;
@@ -8,9 +10,13 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 
+
+
+import net.minecraft.world.GameRules;
 import org.spifftech.ultimatecollisionengine.entity.CustomCollisionEntity;
 import org.spifftech.ultimatecollisionengine.entity.CustomCollisionEntityAttributes;
 
@@ -28,6 +34,12 @@ public class Ultimatecollisionengine implements ModInitializer {
 
                     .build()
     );
+
+
+    public static final GameRules.Key<GameRules.IntRule> CollisionPushDistance = GameRuleRegistry.register("CollisionPushDistance", GameRules.Category.MISC, GameRuleFactory.createIntRule(5));
+
+
+
 
     @Override
     public void onInitialize() {

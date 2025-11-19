@@ -15,6 +15,8 @@ import org.spifftech.ultimatecollisionengine.boxcollision.SatCollisionHelper;
 
 import java.util.List;
 
+import static org.spifftech.ultimatecollisionengine.Ultimatecollisionengine.CollisionPushDistance;
+
 /**
  * An entity designed to act as a custom collision boundary (e.g., a wall or prop).
  * It uses a fixed, internal OBB that is NOT derived from its vanilla AABB/Dimensions.
@@ -141,7 +143,30 @@ public class CustomCollisionEntity extends MobEntity {
         // CRITICAL: Do nothing here. All collision is handled in tick().
     }
 
+    public void setEntityPosition(Entity other,Vec3d pos){
 
+        // Check if the entity is a player
+        if (other instanceof net.minecraft.server.network.ServerPlayerEntity player) {
+
+            // 🌟 CRITICAL FIX: Use the specific player teleport method.
+            // This method sends a packet that tells the client to stop its movement
+            // prediction and accept the new position immediately.
+            // The last three arguments (yaw, pitch, flags) are important for full sync.
+            player.teleport(
+                    pos.getX(),
+                    pos.getY(),
+                    pos.getZ()
+            );
+
+        } else {
+            // For non-player entities (Mobs, Items, etc.):
+            // Use setPos and then let the entity tracker handle the periodic sync.
+            // Since you are in tick(), the tracker should pick up the change soon.
+            other.setPosition(pos);
+        }
+
+
+    }
     // --- 4. Custom Collision Logic ---
 
     // 🌟 Implement the custom collision logic in the tick loop.
@@ -151,6 +176,8 @@ public class CustomCollisionEntity extends MobEntity {
         super.tick();
 
         if (!this.getWorld().isClient) {
+
+
 
             // ⭐ NEW: Calculate and set a continuous rotation based on age (ticks)
             // This is what makes the entity spin!
@@ -190,6 +217,19 @@ public class CustomCollisionEntity extends MobEntity {
             for (Entity other : nearbyEntities) {
                 Box otherAabb = other.getBoundingBox();
 
+                //other.setPosition(other.getPos().add(new Vec3d(0,1,0)));
+                //other.updatePosition(0,0,0);
+                System.out.println("Position");
+                System.out.println(other.getPos());
+                System.out.println(other.getType());
+
+                //setEntityPosition(other, new Vec3d(0,0,0));
+
+
+
+
+
+
                 // Check for OBB-AABB collision
                 if (SatCollisionHelper.obbAabbIntersects(thisObb, otherAabb)) {
 
@@ -206,14 +246,15 @@ public class CustomCollisionEntity extends MobEntity {
                     double overlapX = (thisObb.halfExtents.getX() + (otherAabb.getXLength() / 2.0)) - Math.abs(centerVector.getX());
                     double overlapZ = (thisObb.halfExtents.getZ() + (otherAabb.getZLength() / 2.0)) - Math.abs(centerVector.getZ());
 
-                    double pushFactor = 5.0; // Controls the strength of the push
+                    double pushFactor = 0.5; // Controls the strength of the push
+                    pushFactor = (double) 1.0 / (double) getWorld().getGameRules().getInt(CollisionPushDistance);
 
 
                     double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
                     double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
                     other.addVelocity(pushX * pushFactor, 10.0, pushZ * pushFactor);
                     System.out.println(other.getPos().add(centerVector));
-                    other.setPosition(other.getPos().add(centerVector));
+                    setEntityPosition(other,other.getPos().add(centerVector.multiply(pushFactor)));
 
                     // Determine MTV axis and apply repulsion
                     if (overlapX < overlapZ) {
@@ -221,13 +262,14 @@ public class CustomCollisionEntity extends MobEntity {
                         // Add a small epsilon (0.001) to ensure separation
                         //double pushX = centerVector.getX() > 0 ? overlapX + 0.001 : -(overlapX + 0.001);
                         other.addVelocity(pushX * pushFactor, 0.0, 0.0);
+
                     } else {
                         // Push along Z axis
                        // double pushZ = centerVector.getZ() > 0 ? overlapZ + 0.001 : -(overlapZ + 0.001);
                         other.addVelocity(0.0, 0.0, pushZ * pushFactor);
                     }
 
-                    other.velocityDirty = true;
+                    //other.velocityDirty = true;
                 }
             }
         }
